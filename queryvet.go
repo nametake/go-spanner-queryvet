@@ -70,5 +70,30 @@ type WhereBoolExpr struct {
 }
 
 func NewQuery(query string) (*Query, error) {
-	return &Query{}, nil
+	file := &token.File{
+		Buffer: query,
+	}
+	p := &memefish.Parser{
+		Lexer: &memefish.Lexer{File: file},
+	}
+
+	stmt, err := p.ParseQuery()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse query: %w", err)
+	}
+
+	selectStmt, ok := stmt.Query.(*ast.Select)
+	if !ok {
+		return nil, fmt.Errorf("expected SELECT statement, got %T", stmt)
+	}
+
+	tableName, ok := selectStmt.From.Source.(*ast.TableName)
+	if !ok {
+		return nil, fmt.Errorf("expected TableName, got %T", selectStmt.From.Source)
+	}
+
+	return &Query{
+		SelectTable:    tableName.Table.Name,
+		WhereBoolExprs: []*WhereBoolExpr{},
+	}, nil
 }
