@@ -60,6 +60,18 @@ func TestNewQuery(t *testing.T) {
 				WhereBoolExprs: []*WhereBoolExpr{},
 			},
 		},
+		{
+			query: "SELECT * FROM Singers WHERE SingerId = 1",
+			want: &Query{
+				SelectTable: "Singers",
+				WhereBoolExprs: []*WhereBoolExpr{
+					{
+						Table:  "Singers",
+						Column: "SingerId",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
