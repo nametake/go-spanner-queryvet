@@ -58,3 +58,13 @@ func (d DDL) Has(table, column string) bool {
 	_, ok := d[table][column]
 	return ok
 }
+
+type Query struct {
+	SelectTable    string
+	WhereBoolExprs []*WhereBoolExpr
+}
+
+type WhereBoolExpr struct {
+	Table  string
+	Column string
+}
