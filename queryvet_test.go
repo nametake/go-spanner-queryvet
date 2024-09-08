@@ -61,7 +61,19 @@ func TestNewQuery(t *testing.T) {
 			},
 		},
 		{
-			query: "SELECT * FROM Singers WHERE SingerId = 1",
+			query: "SELECT * FROM Singers WHERE SingerId = @singerId",
+			want: &Query{
+				SelectTable: "Singers",
+				WhereBoolExprs: []*WhereBoolExpr{
+					{
+						Table:  "Singers",
+						Column: "SingerId",
+					},
+				},
+			},
+		},
+		{
+			query: "SELECT * FROM Singers JOIN Albums ON Singers.SingerId = Albums.SingerId WHERE Singers.SingerId = @singerId AND Albums.AlbumId = @albumId",
 			want: &Query{
 				SelectTable: "Singers",
 				WhereBoolExprs: []*WhereBoolExpr{
@@ -79,6 +91,7 @@ func TestNewQuery(t *testing.T) {
 			got, err := NewQuery(tt.query)
 			if err != nil {
 				t.Errorf("NewQuery(%q) = _, %v; want _, nil", tt.query, err)
+				return
 			}
 			if diff := cmp.Diff(got, tt.want); diff != "" {
 				t.Errorf("NewQuery(%q) mismatch (-got +want):\n%s", tt.query, diff)

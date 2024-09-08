@@ -3,6 +3,7 @@ package queryvet
 import (
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/cloudspannerecosystem/memefish"
 	"github.com/cloudspannerecosystem/memefish/ast"
@@ -87,13 +88,51 @@ func NewQuery(query string) (*Query, error) {
 		return nil, fmt.Errorf("expected SELECT statement, got %T", stmt)
 	}
 
-	tableName, ok := selectStmt.From.Source.(*ast.TableName)
-	if !ok {
-		return nil, fmt.Errorf("expected TableName, got %T", selectStmt.From.Source)
+	tableNames := tableNamesFromSource(selectStmt.From.Source)
+	if len(tableNames) == 0 {
+		return nil, fmt.Errorf("expected table name, got %T", selectStmt.From.Source)
 	}
 
+	baseTableName := tableNames[0]
+
+	if selectStmt.Where == nil {
+		return &Query{
+			SelectTable:    baseTableName,
+			WhereBoolExprs: []*WhereBoolExpr{},
+		}, nil
+	}
+	binaryExpr := selectStmt.Where.Expr.(*ast.BinaryExpr)
+
+	fmt.Printf("%#v\n", binaryExpr)
+
+	fmt.Printf("%#v\n", binaryExprToWhereBoolExpr(binaryExpr))
+
 	return &Query{
-		SelectTable:    tableName.Table.Name,
+		SelectTable:    baseTableName,
 		WhereBoolExprs: []*WhereBoolExpr{},
 	}, nil
+}
+
+func tableNamesFromSource(source ast.TableExpr) []string {
+	switch s := source.(type) {
+	case *ast.TableName:
+		return []string{s.Table.Name}
+	case *ast.Join:
+		return slices.Concat(tableNamesFromSource(s.Left), tableNamesFromSource(s.Right))
+	default:
+		return []string{}
+	}
+}
+
+func binaryExprToWhereBoolExpr(binaryExpr *ast.BinaryExpr) []*WhereBoolExpr {
+	switch binaryExpr.Op {
+	case "=":
+		fmt.Printf("%#v\n", binaryExpr.Left)
+		fmt.Printf("%#v\n", binaryExpr.Right)
+		return []*WhereBoolExpr{}
+	case "AND":
+		return slices.Concat(binaryExprToWhereBoolExpr(binaryExpr.Left.(*ast.BinaryExpr)), binaryExprToWhereBoolExpr(binaryExpr.Right.(*ast.BinaryExpr)))
+	default:
+		return []*WhereBoolExpr{}
+	}
 }
