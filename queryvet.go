@@ -68,3 +68,7 @@ type WhereBoolExpr struct {
 	Table  string
 	Column string
 }
+
+func NewQuery(query string) (*Query, error) {
+	return &Query{}, nil
+}

@@ -47,3 +47,30 @@ CREATE TABLE Albums (
 		t.Errorf("NewDDLFromReader(r) mismatch (-got +want):\n%s", diff)
 	}
 }
+
+func TestNewQuery(t *testing.T) {
+	tests := []struct {
+		query string
+		want  *Query
+	}{
+		{
+			query: "SELECT * FROM Singers",
+			want: &Query{
+				SelectTable:    "Singers",
+				WhereBoolExprs: []*WhereBoolExpr{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			got, err := NewQuery(tt.query)
+			if err != nil {
+				t.Errorf("NewQuery(%q) = _, %v; want _, nil", tt.query, err)
+			}
+			if diff := cmp.Diff(got, tt.want); diff != "" {
+				t.Errorf("NewQuery(%q) mismatch (-got +want):\n%s", tt.query, diff)
+			}
+		})
+	}
+}
