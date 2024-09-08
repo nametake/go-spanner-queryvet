@@ -52,7 +52,12 @@ func (d DDL) Add(table, column string) {
 	d[table][column] = struct{}{}
 }
 
-func (d DDL) Has(table, column string) bool {
+func (d DDL) HasTable(table string) bool {
+	_, ok := d[table]
+	return ok
+}
+
+func (d DDL) HasColumn(table, column string) bool {
 	if _, ok := d[table]; !ok {
 		return false
 	}
@@ -68,6 +73,45 @@ type Query struct {
 type WhereBoolExpr struct {
 	Table  string
 	Column string
+}
+
+type ErrorPosition struct {
+	Node ast.Node
+}
+
+type ErrorPositions []*ErrorPosition
+
+func AnalyzeSelectQuery(ddl DDL, query string) (ErrorPositions, error) {
+	errorPositions := ErrorPositions{}
+	file := &token.File{
+		Buffer: query,
+	}
+	p := &memefish.Parser{
+		Lexer: &memefish.Lexer{File: file},
+	}
+
+	stmt, err := p.ParseQuery()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse query: %w", err)
+	}
+
+	selectStmt, ok := stmt.Query.(*ast.Select)
+	if !ok {
+		return nil, fmt.Errorf("expected SELECT statement, got %T", stmt)
+	}
+
+	tableNames := tableNamesFromSource(selectStmt.From.Source)
+	if len(tableNames) == 0 {
+		return nil, fmt.Errorf("expected table name, got %T", selectStmt.From.Source)
+	}
+
+	for _, tableName := range tableNames {
+		if !ddl.HasTable(tableName) {
+			errorPositions = append(errorPositions, &ErrorPosition{Node: selectStmt.From.Source})
+		}
+	}
+
+	return errorPositions, nil
 }
 
 func NewQuery(query string) (*Query, error) {
